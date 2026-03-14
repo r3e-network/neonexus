@@ -1,0 +1,28 @@
+{
+  "name": "neo-nexus",
+  "version": "1.0.0",
+  "description": "**The Ultimate Industrial-grade Neo N3 Infrastructure Platform.**",
+  "main": "index.js",
+  "scripts": {
+    "dev:dashboard": "npm run dev --workspace=dashboard",
+    "dev:website": "npm run dev --workspace=website",
+    "build:all": "npm run build --workspaces",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/r3e-network/neonexus.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/r3e-network/neonexus/issues"
+  },
+  "homepage": "https://github.com/r3e-network/neonexus#readme",
+  "workspaces": [
+    "dashboard",
+    "website"
+  ]
+}
