@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/server';
+import { prisma } from '@/utils/prisma';
 import EndpointsList, { Endpoint } from './EndpointsList';
 
 const MOCK_ENDPOINTS: Endpoint[] = [
@@ -35,22 +35,27 @@ export default async function EndpointsPage() {
   let endpoints: Endpoint[] = MOCK_ENDPOINTS;
 
   try {
-    // Attempt to fetch from Supabase if env vars are present
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      const supabase = await createClient();
-      const { data, error } = await supabase
-        .from('endpoints')
-        .select('*')
-        .order('created_at', { ascending: false });
+    // Attempt to fetch from DB if env vars are present
+    if (process.env.DATABASE_URL) {
+      const data = await prisma.endpoint.findMany({
+        orderBy: { createdAt: 'desc' }
+      });
 
-      if (!error && data && data.length > 0) {
-        endpoints = data as Endpoint[];
-      } else if (error) {
-        console.warn('Supabase fetch failed, falling back to mock data:', error.message);
+      if (data && data.length > 0) {
+        // Map Prisma Endpoint to our component Endpoint type
+        endpoints = data.map(ep => ({
+          id: ep.id,
+          name: ep.name,
+          network: ep.network,
+          type: ep.type,
+          url: ep.url,
+          status: ep.status,
+          requests: ep.requests.toString()
+        }));
       }
     }
   } catch (error) {
-    console.warn('Supabase not configured or failed, falling back to mock data.', error);
+    console.warn('Database not configured or failed, falling back to mock data.', error);
   }
 
   return <EndpointsList endpoints={endpoints} />;

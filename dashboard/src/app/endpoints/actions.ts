@@ -1,6 +1,6 @@
 'use server';
 
-import { createClient } from '@/utils/supabase/server';
+import { prisma } from '@/utils/prisma';
 import { revalidatePath } from 'next/cache';
 import { KubernetesDeployer, DeploymentConfig } from '@/services/KubernetesDeployer';
 
@@ -13,7 +13,7 @@ export async function createEndpointAction(formData: {
   region: string;
   syncMode: string;
 }) {
-  const isSupabaseConfigured = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const isDatabaseConfigured = !!process.env.DATABASE_URL;
 
   // 1. Simulate Control Plane Deployment
   const k8sConfig: DeploymentConfig = {
@@ -33,45 +33,39 @@ export async function createEndpointAction(formData: {
   }
 
   // 2. Persist to Database
-  if (isSupabaseConfigured) {
-    const supabase = await createClient();
-    
+  if (isDatabaseConfigured) {
     // Generate a mock URL based on config
     const randomId = Math.random().toString(36).substring(2, 8);
     const url = formData.type === 'dedicated' 
       ? `https://node-${formData.region}-${randomId}.neonexus.io/v1`
       : `https://${formData.network}.neonexus.io/v1/${randomId}`;
 
-    const { data, error } = await supabase
-      .from('endpoints')
-      .insert([
-        {
+    try {
+      const endpoint = await prisma.endpoint.create({
+        data: {
           name: formData.name,
           network: formData.network === 'mainnet' ? 'N3 Mainnet' : 'N3 Testnet',
           type: formData.type.charAt(0).toUpperCase() + formData.type.slice(1),
-          client_engine: formData.clientEngine,
-          cloud_provider: formData.type === 'dedicated' ? formData.provider : null,
+          clientEngine: formData.clientEngine,
+          cloudProvider: formData.type === 'dedicated' ? formData.provider : null,
           region: formData.type === 'dedicated' ? formData.region : null,
           url: url,
           status: 'Syncing', // Starts in syncing state
-          requests: '0',
-          k8s_namespace: k8sResult.namespace,
-          k8s_deployment_name: k8sResult.releaseName
+          requests: 0,
+          k8sNamespace: k8sResult.namespace,
+          k8sDeploymentName: k8sResult.releaseName
         }
-      ])
-      .select()
-      .single();
+      });
 
-    if (error) {
+      revalidatePath('/endpoints');
+      return { success: true, id: endpoint.id };
+    } catch (error: any) {
       console.error('Error creating endpoint:', error);
       return { success: false, error: error.message };
     }
-
-    revalidatePath('/endpoints');
-    return { success: true, id: data.id };
   } else {
-    // Mock successful creation for local dev without Supabase
-    console.log('Supabase not configured. Mocking endpoint creation:', formData);
+    // Mock successful creation for local dev without DB
+    console.log('Database not configured. Mocking endpoint creation:', formData);
     return { success: true, id: 1 }; // Return mock ID 1
   }
 }

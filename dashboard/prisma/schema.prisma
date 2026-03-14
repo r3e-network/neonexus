@@ -1,0 +1,58 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Organization {
+  id                 String     @id @default(uuid())
+  name               String
+  billingPlan        String     @default("developer")
+  stripeCustomerId   String?
+  createdAt          DateTime   @default(now())
+  endpoints          Endpoint[]
+  apiKeys            ApiKey[]
+}
+
+model Endpoint {
+  id                Int       @id @default(autoincrement())
+  organizationId    String?
+  name              String
+  network           String
+  type              String
+  clientEngine      String    @default("neo-go")
+  url               String
+  wssUrl            String?
+  status            String    @default("Syncing")
+  requests          Int       @default(0)
+  k8sNamespace      String?
+  k8sDeploymentName String?
+  cloudProvider     String?
+  region            String?
+  createdAt         DateTime  @default(now())
+  organization      Organization? @relation(fields: [organizationId], references: [id])
+  firewalls         Firewall[]
+}
+
+model ApiKey {
+  id             String       @id @default(uuid())
+  organizationId String?
+  name           String
+  keyHash        String
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+}
+
+model Firewall {
+  id          Int       @id @default(autoincrement())
+  endpointId  Int?
+  type        String
+  value       String
+  createdAt   DateTime  @default(now())
+  endpoint    Endpoint? @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+}
