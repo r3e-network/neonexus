@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "neo-cli.fullname" . }}
+  labels:
+    app: neo-cli
+spec:
+  serviceName: {{ include "neo-cli.fullname" . }}
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: neo-cli
+  template:
+    metadata:
+      labels:
+        app: neo-cli
+    spec:
+      containers:
+        - name: neo-cli
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["dotnet", "neo-cli.dll", "--rpc"]
+          ports:
+            - name: p2p
+              containerPort: {{ .Values.node.p2pPort }}
+            - name: rpc
+              containerPort: {{ .Values.node.rpcPort }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /app/Data_LevelDB
+      volumes:
+  {{- if .Values.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        storageClassName: {{ .Values.persistence.storageClass }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.size }}
+  {{- end }}
